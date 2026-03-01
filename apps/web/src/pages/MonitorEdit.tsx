@@ -36,6 +36,11 @@ export default function MonitorEdit() {
           </Link>
           <h1 className="text-2xl font-bold mt-2">Edit Monitor</h1>
         </div>
+        {mutation.error && (
+          <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md">
+            {(mutation.error as Error).message}
+          </div>
+        )}
         <div className="bg-white rounded-xl border p-6">
           <MonitorForm
             defaultValues={{
@@ -51,7 +56,7 @@ export default function MonitorEdit() {
               dnsCheckEnabled: monitor.dnsCheckEnabled,
               additionalEmails: monitor.additionalEmails,
             }}
-            onSubmit={(data) => mutation.mutateAsync(data)}
+            onSubmit={async (data) => { await mutation.mutateAsync(data); }}
             isLoading={mutation.isPending}
             submitLabel="Save Changes"
           />

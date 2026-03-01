@@ -73,6 +73,8 @@ export interface User {
   fullName: string;
   role: string;
   status: string;
+  emailVerified: boolean;
+  createdAt: string;
 }
 
 export interface Monitor {

@@ -86,7 +86,9 @@ authRouter.post(
         emailVerificationExpires: verificationExpiry(),
       });
 
-      await sendVerificationEmail(email, verificationToken);
+      sendVerificationEmail(email, verificationToken).catch((e) =>
+        console.error("[auth] verification email failed:", e.message)
+      );
 
       res.status(201).json({
         message: "Account created. Check your email to verify your address.",
@@ -179,7 +181,9 @@ authRouter.post(
         })
         .where(eq(users.id, user.id));
 
-      await sendVerificationEmail(user.email, verificationToken);
+      sendVerificationEmail(user.email, verificationToken).catch((e) =>
+        console.error("[auth] resend verification email failed:", e.message)
+      );
       res.json({ message: "If your account exists and is unverified, a new email has been sent." });
     } catch (err) {
       next(err);
@@ -389,7 +393,9 @@ authRouter.post(
             updatedAt: new Date(),
           })
           .where(eq(users.id, user.id));
-        await sendPasswordResetEmail(user.email, token);
+        sendPasswordResetEmail(user.email, token).catch((e) =>
+          console.error("[auth] password reset email failed:", e.message)
+        );
       }
 
       res.json({ message: "If an account with that email exists, a reset link has been sent." });

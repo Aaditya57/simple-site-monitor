@@ -1,4 +1,4 @@
-import { Job } from "bullmq";
+import { Job, UnrecoverableError } from "bullmq";
 import nodemailer from "nodemailer";
 import { getDb, monitors, users, alertEvents } from "@monitor/db";
 import { eq } from "drizzle-orm";
@@ -108,18 +108,28 @@ export async function processSendAlert(job: Job<SendAlertJob>): Promise<void> {
 
   const recipients = [user.email, ...monitor.additionalEmails].join(",");
 
-  if (process.env.NODE_ENV === "development" && !process.env.SMTP_HOST) {
-    console.log(`[email] DEV — ${alertType} alert for "${monitor.name}" to ${recipients}`);
+  if (process.env.SMTP_ENABLED !== "true") {
+    console.log(`[email] SMTP disabled — skipping ${alertType} alert for "${monitor.name}" to ${recipients}`);
     return;
   }
 
   const transporter = createTransport();
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to: recipients,
-    subject: subjectLine,
-    html: htmlBody,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: recipients,
+      subject: subjectLine,
+      html: htmlBody,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Auth failures (535) are permanent — no point retrying with the same credentials
+    if (msg.includes("535") || msg.includes("Invalid login") || msg.includes("Authentication failed")) {
+      await db.insert(alertEvents).values({ monitorId, alertType, status: "failed", errorDetail: msg });
+      throw new UnrecoverableError(`SMTP auth failed: ${msg}`);
+    }
+    throw err;
+  }
 
   await db.insert(alertEvents).values({
     monitorId,

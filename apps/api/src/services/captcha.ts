@@ -1,7 +1,6 @@
 /** Verifies a captcha token server-side. Returns true if valid. */
 export async function verifyCaptcha(token: string): Promise<boolean> {
-  if (process.env.NODE_ENV === "development" && !process.env.CAPTCHA_SECRET) {
-    // Skip captcha in development if not configured
+  if (process.env.CAPTCHA_ENABLED !== "true") {
     return true;
   }
 

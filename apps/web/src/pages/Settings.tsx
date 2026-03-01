@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios, { AxiosError } from "axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import api from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 

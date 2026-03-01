@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 import { useAuthStore } from "@/lib/authStore";
 import { User } from "@/lib/api";
@@ -25,7 +25,7 @@ import Admin from "@/pages/Admin";
 import NotFound from "@/pages/NotFound";
 
 export default function App() {
-  const { setAuth, clearAuth, setLoading } = useAuthStore();
+  const { setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
     // Restore session from httpOnly cookie on page load

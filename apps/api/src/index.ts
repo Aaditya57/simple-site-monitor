@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
+import path from "path";
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -8,11 +9,17 @@ import { authRouter } from "./routes/auth";
 import { monitorsRouter } from "./routes/monitors";
 import { meRouter } from "./routes/me";
 import { adminRouter } from "./routes/admin";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { bootstrapAdmin } from "./services/bootstrap";
 import { errorHandler } from "./middleware/errorHandler";
+import { getDb } from "@monitor/db";
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
+
+// Trust nginx (first proxy) so express-rate-limit reads the real client IP
+// from X-Forwarded-For instead of the nginx container's internal IP.
+app.set("trust proxy", 1);
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(
@@ -53,13 +60,21 @@ app.get("/api/ping", (_req, res) => res.json({ ok: true }));
 app.use(errorHandler);
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-bootstrapAdmin()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`[api] listening on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("[api] startup error", err);
-    process.exit(1);
+async function start() {
+  // Run DB migrations before accepting traffic
+  const migrationsFolder = path.join(process.cwd(), "packages/db/drizzle");
+  console.log(`[api] running migrations from ${migrationsFolder}`);
+  await migrate(getDb(), { migrationsFolder });
+  console.log("[api] migrations complete");
+
+  await bootstrapAdmin();
+
+  app.listen(Number(PORT), "0.0.0.0", () => {
+    console.log(`[api] listening on port ${PORT}`);
   });
+}
+
+start().catch((err) => {
+  console.error("[api] startup error", err);
+  process.exit(1);
+});

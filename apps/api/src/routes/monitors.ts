@@ -16,7 +16,7 @@ const MAX_MONITORS = () =>
 const monitorInputSchema = z.object({
   name: z.string().min(1).max(200),
   url: z.string().url().max(2048),
-  intervalMinutes: z.enum(["5", "10", "15", "30"]).transform(Number).or(z.number().refine((n) => [5, 10, 15, 30].includes(n))),
+  intervalMinutes: z.enum(["1", "5", "10", "15", "30"]).transform(Number).or(z.number().refine((n) => [1, 5, 10, 15, 30].includes(n))),
   timeoutSeconds: z.number().int().min(5).max(30).optional().default(10),
   expectedStatus: z.string().optional().default("2xx_3xx"),
   keyword: z.string().max(500).optional(),

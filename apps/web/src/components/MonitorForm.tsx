@@ -67,6 +67,7 @@ export function MonitorForm({
           {...register("intervalMinutes", { valueAsNumber: true })}
           className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         >
+          <option value={1}>Every 1 minute</option>
           <option value={5}>Every 5 minutes</option>
           <option value={10}>Every 10 minutes</option>
           <option value={15}>Every 15 minutes</option>

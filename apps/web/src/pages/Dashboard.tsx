@@ -37,10 +37,6 @@ export default function Dashboard() {
     return true;
   });
 
-  const tlsExpiring = monitors.filter(
-    (m) => m.lastLatencyMs !== null && m.currentStatus === "UP"
-  );
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />

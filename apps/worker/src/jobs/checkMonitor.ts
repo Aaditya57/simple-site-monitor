@@ -10,6 +10,7 @@ export interface CheckMonitorJob {
 
 export async function processCheckMonitor(
   job: Job<CheckMonitorJob>,
+  checkQueue: Queue,
   alertQueue: Queue
 ): Promise<void> {
   const { monitorId, attempt = 1 } = job.data;
@@ -23,6 +24,7 @@ export async function processCheckMonitor(
 
   if (!monitor || monitor.isPaused || monitor.deletedAt) return;
 
+  console.log(`[check] ${monitor.name} (${monitor.url}) attempt=${attempt}`);
   const result = await runCheck({
     url: monitor.url,
     timeoutSeconds: monitor.timeoutSeconds,
@@ -36,8 +38,8 @@ export async function processCheckMonitor(
 
   // ── Retry once on failure ─────────────────────────────────────────────────
   if (result.status === "DOWN" && attempt === 1) {
-    console.log(`[worker] monitor ${monitorId} failed on attempt 1; will retry in 60s`);
-    await job.queue.add(
+    console.log(`[check] ${monitor.name} DOWN on attempt 1 (${result.errorType ?? "?"}: ${result.errorMessage ?? ""}) — retrying in 60s`);
+    await checkQueue.add(
       "checkMonitor",
       { monitorId, attempt: 2 },
       { delay: 60_000, removeOnComplete: true, removeOnFail: 10 }

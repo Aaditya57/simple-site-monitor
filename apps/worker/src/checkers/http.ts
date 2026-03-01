@@ -1,7 +1,5 @@
-import { request as undiciRequest, Agent } from "undici";
 import tls from "tls";
 import dns from "dns/promises";
-import net from "net";
 
 export type CheckStatus = "UP" | "DOWN";
 
@@ -63,7 +61,8 @@ async function getTlsInfo(
         const daysRemaining = Math.floor(
           (expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         );
-        const cn = cert.subject?.CN ?? "";
+        const rawCn = cert.subject?.CN;
+        const cn = Array.isArray(rawCn) ? (rawCn[0] ?? "") : (rawCn ?? "");
         resolve({ daysRemaining, cn });
       }
     );
@@ -79,69 +78,65 @@ export async function runCheck(opts: CheckOptions): Promise<CheckResult> {
   const start = Date.now();
   const parsed = new URL(opts.url);
   const timeoutMs = opts.timeoutSeconds * 1000;
+  const tag = `[checker] ${opts.url}`;
+
+  console.log(`${tag} — starting check (timeout=${opts.timeoutSeconds}s tls=${opts.tlsCheckEnabled} dns=${opts.dnsCheckEnabled})`);
 
   // ── DNS check ─────────────────────────────────────────────────────────────
   let dnsResolvedIp: string | undefined;
   if (opts.dnsCheckEnabled) {
     try {
-      const addrs = await dns.resolve(parsed.hostname, "A").catch(() =>
+      const addrs = (await dns.resolve(parsed.hostname, "A").catch(() =>
         dns.resolve(parsed.hostname, "AAAA")
-      );
+      )) as string[];
       dnsResolvedIp = addrs[0];
+      console.log(`${tag} — DNS resolved: ${dnsResolvedIp}`);
     } catch (e) {
-      return {
+      const result: CheckResult = {
         status: "DOWN",
         latencyMs: Date.now() - start,
         errorType: "DNS_FAILURE",
         errorMessage: String(e),
       };
+      console.log(`${tag} — DOWN dns_failure: ${result.errorMessage}`);
+      return result;
     }
   }
 
-  // ── HTTP request ──────────────────────────────────────────────────────────
-  const agent = new Agent({
-    connect: { timeout: timeoutMs },
-    maxRedirections: 10,
-  });
-
+  // ── HTTP request (Node 20 built-in fetch — follows redirects, no undici version issues)
   let httpStatusCode: number | undefined;
   let responseBody = "";
 
   try {
-    const resp = await undiciRequest(opts.url, {
+    const resp = await fetch(opts.url, {
       method: "GET",
       headers: { "User-Agent": "UptimeMonitor/1.0" },
-      dispatcher: agent,
-      headersTimeout: timeoutMs,
-      bodyTimeout: timeoutMs,
+      signal: AbortSignal.timeout(timeoutMs),
+      redirect: "follow",
     });
 
-    httpStatusCode = resp.statusCode;
+    httpStatusCode = resp.status;
+    console.log(`${tag} — HTTP ${httpStatusCode} (${Date.now() - start}ms)`);
+
     if (opts.keyword) {
-      // Only read body if keyword check is needed
-      const chunks: Buffer[] = [];
-      for await (const chunk of resp.body) {
-        chunks.push(chunk as Buffer);
-        if (Buffer.concat(chunks).length > 500_000) break; // 500KB cap
-      }
-      responseBody = Buffer.concat(chunks).toString("utf-8");
+      const text = await resp.text();
+      responseBody = text.slice(0, 500_000); // 500 KB cap
     } else {
-      // Drain body to free socket
-      await resp.body.dump();
+      await resp.body?.cancel();
     }
   } catch (err: unknown) {
     const msg = String(err);
     const latencyMs = Date.now() - start;
-    if (msg.includes("UND_ERR_CONNECT_TIMEOUT") || msg.includes("UND_ERR_HEADERS_TIMEOUT")) {
-      return { status: "DOWN", latencyMs, errorType: "HTTP_TIMEOUT", errorMessage: msg };
+    let errorType: ErrorType = "UNKNOWN_ERROR";
+    if (err instanceof Error && err.name === "TimeoutError") {
+      errorType = "HTTP_TIMEOUT";
+    } else if (msg.includes("ECONNREFUSED")) {
+      errorType = "TCP_CONNECT_REFUSED";
+    } else if (msg.includes("Too many redirects") || msg.includes("redirect")) {
+      errorType = "REDIRECT_LIMIT_EXCEEDED";
     }
-    if (msg.includes("ECONNREFUSED")) {
-      return { status: "DOWN", latencyMs, errorType: "TCP_CONNECT_REFUSED", errorMessage: msg };
-    }
-    if (msg.includes("max redirects")) {
-      return { status: "DOWN", latencyMs, errorType: "REDIRECT_LIMIT_EXCEEDED", errorMessage: msg };
-    }
-    return { status: "DOWN", latencyMs, errorType: "UNKNOWN_ERROR", errorMessage: msg };
+    console.log(`${tag} — DOWN ${errorType}: ${msg}`);
+    return { status: "DOWN", latencyMs, errorType, errorMessage: msg };
   }
 
   const latencyMs = Date.now() - start;
@@ -156,8 +151,10 @@ export async function runCheck(opts: CheckOptions): Promise<CheckResult> {
     if (tlsInfo) {
       tlsDaysRemaining = tlsInfo.daysRemaining;
       tlsCertCn = tlsInfo.cn;
+      console.log(`${tag} — TLS cert "${tlsCertCn}" expires in ${tlsDaysRemaining}d`);
 
       if (tlsDaysRemaining <= 0) {
+        console.log(`${tag} — DOWN TLS_CERT_EXPIRED`);
         return {
           status: "DOWN",
           httpStatusCode,
@@ -169,11 +166,14 @@ export async function runCheck(opts: CheckOptions): Promise<CheckResult> {
           dnsResolvedIp,
         };
       }
+    } else {
+      console.log(`${tag} — TLS info unavailable (skipped)`);
     }
   }
 
   // ── Status check ──────────────────────────────────────────────────────────
   if (!isExpectedStatus(httpStatusCode!, opts.expectedStatus)) {
+    console.log(`${tag} — DOWN HTTP_STATUS_UNEXPECTED: expected ${opts.expectedStatus}, got ${httpStatusCode}`);
     return {
       status: "DOWN",
       httpStatusCode,
@@ -197,6 +197,7 @@ export async function runCheck(opts: CheckOptions): Promise<CheckResult> {
       : opts.keyword;
     keywordMatch = haystack.includes(needle);
     if (!keywordMatch) {
+      console.log(`${tag} — DOWN KEYWORD_NOT_FOUND: "${opts.keyword}"`);
       return {
         status: "DOWN",
         httpStatusCode,
@@ -211,6 +212,7 @@ export async function runCheck(opts: CheckOptions): Promise<CheckResult> {
     }
   }
 
+  console.log(`${tag} — UP (${latencyMs}ms)`);
   return {
     status: "UP",
     httpStatusCode,

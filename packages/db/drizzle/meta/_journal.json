@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1772314515250,
+      "tag": "0000_watery_skrulls",
+      "breakpoints": true
+    }
+  ]
+}

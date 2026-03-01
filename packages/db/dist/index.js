@@ -40,9 +40,9 @@ exports.schema = void 0;
 exports.getDb = getDb;
 const node_postgres_1 = require("drizzle-orm/node-postgres");
 const pg_1 = require("pg");
-const schema = __importStar(require("./schema.js"));
+const schema = __importStar(require("./schema"));
 exports.schema = schema;
-__exportStar(require("./schema.js"), exports);
+__exportStar(require("./schema"), exports);
 let _db;
 function getDb() {
     if (!_db) {

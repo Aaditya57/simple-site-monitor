@@ -32,7 +32,7 @@ export default function MonitorNew() {
         )}
         <div className="bg-white rounded-xl border p-6">
           <MonitorForm
-            onSubmit={(data) => mutation.mutateAsync(data)}
+            onSubmit={async (data) => { await mutation.mutateAsync(data); }}
             isLoading={mutation.isPending}
             submitLabel="Create Monitor"
           />
