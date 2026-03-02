@@ -31,15 +31,15 @@ services:
       target: api
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/ping || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://api:${PORT:-3000}/api/ping || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -52,8 +52,8 @@ services:
       target: worker
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor
+      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
     depends_on:
       db:
         condition: service_healthy
@@ -65,9 +65,9 @@ services:
     image: sosedoff/pgweb
     restart: unless-stopped
     ports:
-      - "8082:8081"
+      - "${PGWEB_PORT:-8181}:8081"
     environment:
-      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor?sslmode=disable
+      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
@@ -75,7 +75,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "${HTTP_PORT:-80}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./apps/web/dist:/usr/share/nginx/html:ro
