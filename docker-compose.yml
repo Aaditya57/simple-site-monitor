@@ -33,13 +33,14 @@ services:
     environment:
       DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor
       REDIS_URL: redis://redis:6379
+      PORT: "3000"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://api:${PORT:-3000}/api/ping || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://api:3000/api/ping || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
