@@ -1,0 +1,25 @@
+# Runtime data (owned by container users, not readable during build)
+pgdata/
+redis_data/
+
+# Web app (not needed for api/worker builds)
+apps/web/
+
+# Dev artifacts
+node_modules/
+**/node_modules/
+**/*.js.map
+**/dist/
+
+# Env files (injected at runtime via docker-compose env_file)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
