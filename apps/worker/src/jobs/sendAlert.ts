@@ -113,6 +113,14 @@ export async function processSendAlert(job: Job<SendAlertJob>): Promise<void> {
     return;
   }
 
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ?? "587";
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM;
+  console.log(`[email] SMTP config — host=${smtpHost} port=${smtpPort} secure=${smtpPort === "465"} user=${smtpUser} pass=${smtpPass ? smtpPass.slice(0, 4) + "****" : "(not set)"} from=${smtpFrom}`);
+  console.log(`[email] Sending ${alertType} to: ${recipients} subject: "${subjectLine}"`);
+
   const transporter = createTransport();
   try {
     await transporter.sendMail({
@@ -121,6 +129,7 @@ export async function processSendAlert(job: Job<SendAlertJob>): Promise<void> {
       subject: subjectLine,
       html: htmlBody,
     });
+    console.log(`[email] Sent successfully`);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     // Auth failures (535) are permanent — no point retrying with the same credentials

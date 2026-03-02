@@ -13,17 +13,31 @@ function createTransport() {
 }
 
 async function sendMail(to: string, subject: string, html: string) {
-  if (process.env.NODE_ENV === "development" && !process.env.SMTP_HOST) {
-    console.log(`[email] DEV — would send to ${to}: ${subject}`);
+  if (process.env.SMTP_ENABLED !== "true") {
+    console.log(`[email] SMTP disabled — skipping email to ${to}: ${subject}`);
     return;
   }
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ?? "587";
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpFrom = process.env.SMTP_FROM;
+  console.log(`[email] SMTP config — host=${smtpHost} port=${smtpPort} secure=${smtpPort === "465"} user=${smtpUser} pass=${smtpPass ? smtpPass.slice(0, 4) + "****" : "(not set)"} from=${smtpFrom}`);
+  console.log(`[email] Sending to=${to} subject="${subject}"`);
   const transporter = createTransport();
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from: smtpFrom,
+      to,
+      subject,
+      html,
+    });
+    console.log(`[email] Sent successfully to ${to}`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[email] Send failed to ${to}: ${msg}`);
+    throw err;
+  }
 }
 
 const appUrl = () => process.env.APP_URL ?? "http://localhost:5173";
