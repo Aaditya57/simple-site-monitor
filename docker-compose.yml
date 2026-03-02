@@ -67,6 +67,7 @@ services:
     ports:
       - "${PGWEB_PORT:-8181}:8081"
     environment:
+      PGWEB_DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor?sslmode=disable
       DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor?sslmode=disable
     depends_on:
       db:
