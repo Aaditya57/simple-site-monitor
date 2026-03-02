@@ -77,12 +77,13 @@ services:
         condition: service_healthy
 
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      target: nginx
     ports:
       - "${HTTP_PORT:-80}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./apps/web/dist:/usr/share/nginx/html:ro
     depends_on:
       api:
         condition: service_healthy

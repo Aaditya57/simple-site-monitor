@@ -2,9 +2,6 @@
 pgdata/
 redis_data/
 
-# Web app (not needed for api/worker builds)
-apps/web/
-
 # Dev artifacts
 node_modules/
 **/node_modules/

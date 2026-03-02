@@ -42,3 +42,18 @@ COPY --from=build /app/packages ./packages
 
 ENV NODE_ENV=production
 CMD ["node", "dist/index.js"]
+
+# ── Stage 5: Web app build ────────────────────────────────────────────────────
+FROM node:20-alpine AS web-build
+WORKDIR /app
+
+COPY package*.json ./
+COPY apps/web/package.json ./apps/web/
+RUN npm ci --workspace=apps/web --ignore-scripts
+
+COPY apps/web/ ./apps/web/
+RUN npm run build -w apps/web
+
+# ── Stage 6: Nginx serving the web app ───────────────────────────────────────
+FROM nginx:alpine AS nginx
+COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
