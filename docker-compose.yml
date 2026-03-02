@@ -31,8 +31,8 @@ services:
       target: api
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor
-      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
+      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
@@ -52,12 +52,14 @@ services:
       target: worker
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor
-      REDIS_URL: redis://redis:${REDIS_PORT:-6379}
+      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      api:
         condition: service_healthy
     restart: unless-stopped
 
@@ -67,8 +69,8 @@ services:
     ports:
       - "${PGWEB_PORT:-8181}:8081"
     environment:
-      PGWEB_DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor?sslmode=disable
-      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:${DB_PORT:-5432}/monitor?sslmode=disable
+      PGWEB_DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor?sslmode=disable
+      DATABASE_URL: postgresql://monitor:${DB_PASSWORD:-monitor}@db:5432/monitor?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
